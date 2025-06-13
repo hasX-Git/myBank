@@ -1,59 +1,53 @@
 package client
 
 import (
+	"math/rand"
 	"net/http"
-	//"time"
-	//"fmt"
-	"errors"
+	"strconv"
+	"time"
 
+	//"fmt"
 	"github.com/gin-gonic/gin"
 )
 
-var AIDs uint32 = 0
-
-type AddClientRequest struct {
+type CreateAccountRequest struct {
 	Firstn string `json:"add_cl_fn"`
 	Lastn  string `json:"add_cl_ln"`
 	NID    string `json:"add_cl_nid"`
 }
 
-func AddClient(c *gin.Context) {
-
-	var newClientRequest AddClientRequest
-	if err := c.BindJSON(&newClientRequest); err != nil {
+func CreateAccount(c *gin.Context) {
+	//initializing new client
+	var newAccountRequest CreateAccountRequest
+	if err := c.BindJSON(&newAccountRequest); err != nil {
 		return
 	}
 
-	var newClient Client
-	newClient.Firstn = newClientRequest.Firstn
-	newClient.Lastn = newClientRequest.Lastn
-	newClient.NID = newClientRequest.NID
-	newClient.Acc.Balance = 0
-	newClient.Acc.AID = string(AIDs)
-	AIDs++
-
-	Clients = append(Clients, newClient)
-	c.IndentedJSON(http.StatusCreated, newClient)
-}
-
-func FindClientByID(id string) (*Client, error) {
-	for index, cl := range Clients {
-		if id == cl.NID {
-			return &Clients[index], nil
+	//checking if the client already exists
+	for _, acc := range Clients {
+		if newAccountRequest.NID == acc.NID {
+			c.IndentedJSON(http.StatusConflict, gin.H{"message": "The account with such National ID already exists"})
+			return
 		}
 	}
-	return nil, errors.New("Not Found")
-}
 
-func AddTransaction(c *gin.Context) {
-	var newT Transaction
+	//creating Client and Account
+	var newClient ClientInfo
+	newClient.Firstn = newAccountRequest.Firstn
+	newClient.Lastn = newAccountRequest.Lastn
+	newClient.NID = newAccountRequest.NID
 
-	if err := c.BindJSON(&newT); err != nil {
-		return
-	}
+	Clients = append(Clients, newClient)
 
-	if client, err := FindClientByID(id); err != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The person not found"})
-	}
+	var newAccount Account
+	newAccount.Personinfo = newClient
+	newAccount.Balance = 0
+	//generating unique Account ID(AID)
+	var aid string
+	aid += strconv.Itoa(time.Now().Year()) + strconv.Itoa(int(time.Now().Month())) + strconv.Itoa(time.Now().Day()) + strconv.Itoa(rand.Intn(999999-100000+1)+100000)
+	newAccount.AID = aid
 
+	Accounts = append(Accounts, newAccount)
+
+	c.IndentedJSON(http.StatusCreated, newAccount)
 }
