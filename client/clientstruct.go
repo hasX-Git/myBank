@@ -1,23 +1,23 @@
 package client
 
-type Transaction struct {
+type transaction struct {
 	Sum  uint32
 	TrID string
 }
 
-type ClientInfo struct {
+type clientInfo struct {
 	Firstn string
 	Lastn  string
 	NID    string
 }
 
-type Account struct {
+type account struct {
 	Balance    uint32
 	AID        string
-	Trs        map[string]*Transaction
-	Personinfo ClientInfo
+	Trs        map[string]*transaction
+	Personinfo clientInfo
 }
 
-var Transactions = make(map[string]*Transaction)
-var Accounts = make(map[string]*Account)
-var Clients = make(map[string]*ClientInfo)
+var transactions = make(map[string]*transaction)
+var accounts = make(map[string]*account)
+var clients = make(map[string]*clientInfo)

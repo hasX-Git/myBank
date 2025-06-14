@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -26,10 +27,12 @@ func currentDateAsID(n int) string {
 	return strconv.Itoa(time.Now().Year() + int(time.Now().Month()) + time.Now().Day() + randWithRange(n))
 }
 
-func checkValidityOfNID(id string, n int) bool {
+func checkValidityOfID(id string, n int) bool {
 	if len(id) != n {
 		return false
 	}
+
+	//only digits
 	for _, ch := range id {
 		if int(ch) < 48 && int(ch) > 57 {
 			return false
@@ -38,7 +41,7 @@ func checkValidityOfNID(id string, n int) bool {
 	return true
 }
 
-type CreateAccountRequest struct {
+type createAccountRequest struct {
 	Firstn string `json:"add_cl_fn"`
 	Lastn  string `json:"add_cl_ln"`
 	NID    string `json:"add_cl_nid"`
@@ -46,84 +49,124 @@ type CreateAccountRequest struct {
 
 func CreateAccount(c *gin.Context) {
 	//initializing new client
-	var newAccountRequest CreateAccountRequest
+	var newAccountRequest createAccountRequest
 	if err := c.BindJSON(&newAccountRequest); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message ": "Improper formatting"})
 		return
 	}
 
 	//checking validity of NID
-	if !checkValidityOfNID(newAccountRequest.NID, 12) {
+	if !checkValidityOfID(newAccountRequest.NID, 12) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message ": "Invalid NID"})
 		return
 	}
 
 	//checking if the client already exists
-	_, isPresent := Clients[newAccountRequest.NID]
+	_, isPresent := clients[newAccountRequest.NID]
 	if isPresent {
 		c.IndentedJSON(http.StatusConflict, gin.H{"message ": "The account with such National ID already exists"})
 		return
 	}
 
 	//creating Client and Account
-	var newClient ClientInfo
+	var newClient clientInfo
 	newClient.Firstn = newAccountRequest.Firstn
 	newClient.Lastn = newAccountRequest.Lastn
 	newClient.NID = newAccountRequest.NID
-	Clients[newClient.NID] = &newClient
+	clients[newClient.NID] = &newClient
 
-	var newAccount Account
+	var newAccount account
 	newAccount.Personinfo = newClient
 	newAccount.Balance = 0
-	newAccount.Trs = make(map[string]*Transaction)
+	newAccount.Trs = make(map[string]*transaction)
 
 	//generating unique Account ID(AID)
 	var aid string
 	for {
 		aid = currentDateAsID(5)
-		if _, isIn := Accounts[aid]; !isIn {
+		if _, isIn := accounts[aid]; !isIn {
 			break
 		}
 	}
 	newAccount.AID = aid
-	Accounts[newAccount.AID] = &newAccount
+	accounts[newAccount.AID] = &newAccount
 
 	//
 	c.IndentedJSON(http.StatusCreated, newAccount)
 }
 
-type CreateTransactionRequest struct {
+type createTransactionRequest struct {
 	Aid string `json:"add_tr_aid"`
 	Sum uint32 `json:"add_tr_sum"`
 }
 
 func CreateTransaction(c *gin.Context) {
-	var newTransactionRequest CreateTransactionRequest
+	var newTransactionRequest createTransactionRequest
 
 	if err := c.BindJSON(&newTransactionRequest); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Improper formatting"})
 		return
 	}
 
-	_, isPresent := Accounts[newTransactionRequest.Aid]
+	_, isPresent := accounts[newTransactionRequest.Aid]
 	if !isPresent {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
 		return
 	}
 
-	var newtr Transaction
+	var newtr transaction
 	newtr.Sum = newTransactionRequest.Sum
 
 	//checking if enough balance on account
-	if newtr.Sum > Accounts[newTransactionRequest.Aid].Balance {
+	if newtr.Sum > accounts[newTransactionRequest.Aid].Balance {
 		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "not enough balance"})
 		return
 	}
 
 	newtr.TrID = currentDateAsID(5)
+	transactions[newtr.TrID] = &newtr
+	accounts[newTransactionRequest.Aid].Trs[newtr.TrID] = &newtr
+	accounts[newTransactionRequest.Aid].Balance -= newtr.Sum
 
-	Transactions[newtr.TrID] = &newtr
+	c.IndentedJSON(http.StatusCreated, accounts[newTransactionRequest.Aid].Trs[newtr.TrID])
+}
 
-	Accounts[newTransactionRequest.Aid].Trs[newtr.TrID] = &newtr
-	Accounts[newTransactionRequest.Aid].Balance -= newtr.Sum
+func findAccByAID(aid string) (*account, error) {
+	if _, isPresent := accounts[aid]; !isPresent {
+		return nil, errors.New("account doesn't exist")
+	}
+
+	return accounts[aid], nil
+}
+
+func GetAccountInfoByAID(c *gin.Context) {
+	AID := c.Param("account")
+	Account, err := findAccByAID(AID)
+
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, Account)
+}
+
+func findTrByTID(tid string) (*transaction, error) {
+	if _, isPresent := transactions[tid]; !isPresent {
+		return nil, errors.New("transaction doesn't exist")
+	}
+
+	return transactions[tid], nil
+}
+
+func GetTransactionInfoByTID(c *gin.Context) {
+	TID := c.Param("transaction")
+	Transaction, err := findTrByTID(TID)
+
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, Transaction)
 }
