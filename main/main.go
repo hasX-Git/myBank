@@ -11,6 +11,7 @@ func main() {
 	router.POST("/bank/account", client.CreateAccount)
 	router.POST("/bank/account/transaction", client.CreateTransaction)
 	router.GET("/bank/:account", client.GetAccountInfoByAID)
-	router.GET("bank/account/:transaction", client.GetAccountInfoByAID)
+	router.GET("bank/account/:transaction", client.GetTransactionInfoByTID)
+	router.GET("bank/accounts", client.GetAccountsList)
 	router.Run("localhost:2266")
 }

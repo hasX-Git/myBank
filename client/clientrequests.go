@@ -24,7 +24,7 @@ func randWithRange(digits int) int {
 }
 
 func currentDateAsID(n int) string {
-	return strconv.Itoa(time.Now().Year() + int(time.Now().Month()) + time.Now().Day() + randWithRange(n))
+	return strconv.Itoa(time.Now().Year()) + strconv.Itoa(int(time.Now().Month())) + strconv.Itoa(time.Now().Day()) + strconv.Itoa(randWithRange(n))
 }
 
 func checkValidityOfID(id string, n int) bool {
@@ -169,4 +169,25 @@ func GetTransactionInfoByTID(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, Transaction)
+}
+
+// type DepositRequest struct {
+// 	sum uint32
+// 	aid string
+// }
+
+// func DepositMoney(c *gin.Context) {
+
+// }
+
+func GetAccountsList(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, accounts)
+}
+
+func GetClientsList(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, clients)
+}
+
+func GetTransacitonsList(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, transactions)
 }
