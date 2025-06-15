@@ -172,8 +172,8 @@ func GetTransactionInfoByTID(c *gin.Context) {
 }
 
 type depositRequest struct {
-	sum uint32
-	aid string
+	Sum uint32 `json:"dep_sum"`
+	Aid string `json:"dep_aid"`
 }
 
 func DepositMoney(c *gin.Context) {
@@ -184,15 +184,15 @@ func DepositMoney(c *gin.Context) {
 		return
 	}
 
-	if _, isIn := accounts[newDepositRequest.aid]; !isIn {
+	if _, isIn := accounts[newDepositRequest.Aid]; !isIn {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account doesn't exist"})
 		return
 	}
 
-	accounts[newDepositRequest.aid].Balance += newDepositRequest.sum
+	accounts[newDepositRequest.Aid].Balance += newDepositRequest.Sum
 	c.IndentedJSON(http.StatusNotFound, gin.H{
-		"Deposited": newDepositRequest.sum,
-		"Balance":   accounts[newDepositRequest.aid].Balance,
+		"Deposited": newDepositRequest.Sum,
+		"Balance":   accounts[newDepositRequest.Aid].Balance,
 	})
 }
 
