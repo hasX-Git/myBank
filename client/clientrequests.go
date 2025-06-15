@@ -171,14 +171,30 @@ func GetTransactionInfoByTID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, Transaction)
 }
 
-// type DepositRequest struct {
-// 	sum uint32
-// 	aid string
-// }
+type depositRequest struct {
+	sum uint32
+	aid string
+}
 
-// func DepositMoney(c *gin.Context) {
+func DepositMoney(c *gin.Context) {
+	var newDepositRequest depositRequest
 
-// }
+	if err := c.BindJSON(&newDepositRequest); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Improper formatting"})
+		return
+	}
+
+	if _, isIn := accounts[newDepositRequest.aid]; !isIn {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account doesn't exist"})
+		return
+	}
+
+	accounts[newDepositRequest.aid].Balance += newDepositRequest.sum
+	c.IndentedJSON(http.StatusNotFound, gin.H{
+		"Deposited": newDepositRequest.sum,
+		"Balance":   accounts[newDepositRequest.aid].Balance,
+	})
+}
 
 func GetAccountsList(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, accounts)
