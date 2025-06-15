@@ -1,51 +1,10 @@
 package client
 
 import (
-	"errors"
-	"math/rand"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
-
-func randWithRange(digits int) int {
-	//digits is how much digits u want in a random number
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	var min int = 1
-	var max int = 9
-	var i int
-	for i = 0; i < digits-1; i++ {
-		min = min * 10
-		max = max*10 + 9
-	}
-	return r.Intn(max-min+1) + min
-}
-
-func currentDateAsID(n int) string {
-	return strconv.Itoa(time.Now().Year()) + strconv.Itoa(int(time.Now().Month())) + strconv.Itoa(time.Now().Day()) + strconv.Itoa(randWithRange(n))
-}
-
-func checkValidityOfID(id string, n int) bool {
-	if len(id) != n {
-		return false
-	}
-
-	//only digits
-	for _, ch := range id {
-		if int(ch) < 48 && int(ch) > 57 {
-			return false
-		}
-	}
-	return true
-}
-
-type createAccountRequest struct {
-	Firstn string `json:"add_cl_fn"`
-	Lastn  string `json:"add_cl_ln"`
-	NID    string `json:"add_cl_nid"`
-}
 
 func CreateAccount(c *gin.Context) {
 	//initializing new client
@@ -95,11 +54,6 @@ func CreateAccount(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, newAccount)
 }
 
-type createTransactionRequest struct {
-	Aid string `json:"add_tr_aid"`
-	Sum uint32 `json:"add_tr_sum"`
-}
-
 func CreateTransaction(c *gin.Context) {
 	var newTransactionRequest createTransactionRequest
 
@@ -131,14 +85,6 @@ func CreateTransaction(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, accounts[newTransactionRequest.Aid].Trs[newtr.TrID])
 }
 
-func findAccByAID(aid string) (*account, error) {
-	if _, isPresent := accounts[aid]; !isPresent {
-		return nil, errors.New("account doesn't exist")
-	}
-
-	return accounts[aid], nil
-}
-
 func GetAccountInfoByAID(c *gin.Context) {
 	AID := c.Param("account")
 	Account, err := findAccByAID(AID)
@@ -151,14 +97,6 @@ func GetAccountInfoByAID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, Account)
 }
 
-func findTrByTID(tid string) (*transaction, error) {
-	if _, isPresent := transactions[tid]; !isPresent {
-		return nil, errors.New("transaction doesn't exist")
-	}
-
-	return transactions[tid], nil
-}
-
 func GetTransactionInfoByTID(c *gin.Context) {
 	TID := c.Param("transaction")
 	Transaction, err := findTrByTID(TID)
@@ -169,11 +107,6 @@ func GetTransactionInfoByTID(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, Transaction)
-}
-
-type depositRequest struct {
-	Sum uint32 `json:"dep_sum"`
-	Aid string `json:"dep_aid"`
 }
 
 func DepositMoney(c *gin.Context) {
