@@ -17,4 +17,4 @@ COPY --from=builder /bankAPI/bank .
 
 EXPOSE 2266
 
-CMD ["./bank"]
+ENTRYPOINT ["./bank"]
