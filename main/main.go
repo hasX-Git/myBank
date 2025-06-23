@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	connStr := "postgres://postgres:sctpwd@localhost:5432/mybank?sslmode=disabl"
+	connStr := "postgres://postgres:sctpwd@localhost:5432/mybank?sslmode=disable"
 
 	db, err := sql.Open("postgres", connStr)
 
