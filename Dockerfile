@@ -1,4 +1,4 @@
-FROM golang:1.21 AS builder
+FROM golang:1.24.3
 
 WORKDIR /bankAPI
 
@@ -7,13 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o bank .
-
-FROM debian:bullseye-slim
-
-WORKDIR /app
-
-COPY --from=builder /bankAPI/bank .
+RUN go build -o bank ./main
 
 EXPOSE 2266
 
