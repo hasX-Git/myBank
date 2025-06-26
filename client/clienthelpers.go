@@ -38,7 +38,7 @@ func checkValidityOfID(id string, n int) bool {
 	return true
 }
 
-func findAccByAID(aid string) (*account, error) {
+func findAccByAID(aid string) (*Account, error) {
 	if _, isPresent := accounts[aid]; !isPresent {
 		return nil, errors.New("account doesn't exist")
 	}
@@ -46,7 +46,7 @@ func findAccByAID(aid string) (*account, error) {
 	return accounts[aid], nil
 }
 
-func findTrByTID(tid string) (*transaction, error) {
+func findTrByTID(tid string) (*Transaction, error) {
 	if _, isPresent := transactions[tid]; !isPresent {
 		return nil, errors.New("transaction doesn't exist")
 	}
@@ -61,11 +61,11 @@ type createAccountRequest struct {
 }
 
 type createTransactionRequest struct {
-	Aid string `json:"add_tr_aid"`
+	AID string `json:"add_tr_aid"`
 	Sum uint32 `json:"add_tr_sum"`
 }
 
 type depositRequest struct {
+	AID string `json:"dep_aid"`
 	Sum uint32 `json:"dep_sum"`
-	Aid string `json:"dep_aid"`
 }

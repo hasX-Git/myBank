@@ -28,26 +28,28 @@ func CreateAccount(c *gin.Context) {
 	}
 
 	//creating Client and Account
-	var newClient clientInfo
+	var newClient ClientInfo
 	newClient.Firstn = newAccountRequest.Firstn
 	newClient.Lastn = newAccountRequest.Lastn
 	newClient.NID = newAccountRequest.NID
-	clients[newClient.NID] = &newClient
 
-	var newAccount account
+	var newAccount Account
 	newAccount.Personinfo = newClient
-	newAccount.Balance = 0
-	newAccount.Trs = make(map[string]*transaction)
 
 	//generating unique Account ID(AID)
 	var aid string
 	for {
-		aid = currentDateAsID(5)
+		aid = "AID" + currentDateAsID(5)
 		if _, isIn := accounts[aid]; !isIn {
 			break
 		}
 	}
 	newAccount.AID = aid
+	newClient.AID = aid
+
+	DB.Create(&newAccount)
+	DB.Create(&newClient)
+	clients[newClient.NID] = &newClient
 	accounts[newAccount.AID] = &newAccount
 
 	//
@@ -62,27 +64,33 @@ func CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	_, isPresent := accounts[newTransactionRequest.Aid]
+	_, isPresent := accounts[newTransactionRequest.AID]
 	if !isPresent {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
 		return
 	}
 
-	var newtr transaction
-	newtr.Sum = newTransactionRequest.Sum
-
 	//checking if enough balance on account
-	if newtr.Sum > accounts[newTransactionRequest.Aid].Balance {
+	if newTransactionRequest.Sum > accounts[newTransactionRequest.AID].Balance {
 		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "not enough balance"})
 		return
 	}
 
-	newtr.TrID = currentDateAsID(5)
-	transactions[newtr.TrID] = &newtr
-	accounts[newTransactionRequest.Aid].Trs[newtr.TrID] = &newtr
-	accounts[newTransactionRequest.Aid].Balance -= newtr.Sum
+	var newtr Transaction
+	newtr.Sum = newTransactionRequest.Sum
+	newtr.AID = newTransactionRequest.AID
+	newtr.TrID = "TID" + currentDateAsID(5)
 
-	c.IndentedJSON(http.StatusCreated, accounts[newTransactionRequest.Aid].Trs[newtr.TrID])
+	DB.Create(&newtr)
+	transactions[newtr.TrID] = &newtr
+
+	newBalance := accounts[newTransactionRequest.AID].Balance - newtr.Sum
+	accounts[newTransactionRequest.AID].Balance = newBalance
+	DB.Model(&Account{}).Where("id = ?", newtr.AID).Update("Balance", newBalance)
+
+	accounts[newTransactionRequest.AID].Trs = append(accounts[newTransactionRequest.AID].Trs, newtr)
+
+	c.IndentedJSON(http.StatusCreated, newtr)
 }
 
 func GetAccountInfoByAID(c *gin.Context) {
@@ -117,15 +125,18 @@ func DepositMoney(c *gin.Context) {
 		return
 	}
 
-	if _, isIn := accounts[newDepositRequest.Aid]; !isIn {
+	if _, isIn := accounts[newDepositRequest.AID]; !isIn {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account doesn't exist"})
 		return
 	}
 
-	accounts[newDepositRequest.Aid].Balance += newDepositRequest.Sum
-	c.IndentedJSON(http.StatusNotFound, gin.H{
+	newBalance := accounts[newDepositRequest.AID].Balance + newDepositRequest.Sum
+	accounts[newDepositRequest.AID].Balance = newBalance
+	DB.Model(&Account{}).Where("id = ?", newDepositRequest.AID).Update("Balance", newBalance)
+
+	c.IndentedJSON(http.StatusOK, gin.H{
 		"Deposited": newDepositRequest.Sum,
-		"Balance":   accounts[newDepositRequest.Aid].Balance,
+		"Balance":   accounts[newDepositRequest.AID].Balance,
 	})
 }
 
