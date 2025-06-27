@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o bank ./main
+RUN go build -o bank ./cmd
 
 EXPOSE 2266
 
