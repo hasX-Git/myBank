@@ -151,3 +151,29 @@ func GetClientsList(c *gin.Context) {
 func GetTransacitonsList(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, transactions)
 }
+
+func DBGetAccountInfoByAID(c *gin.Context) {
+	var acc Account
+	AID := c.Param("account")
+	result := DB.First(&acc, AID)
+
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, acc)
+}
+
+func DBGetTransactionInfoByTID(c *gin.Context) {
+	var tr Transaction
+	TID := c.Param("transaction")
+	result := DB.First(&tr, TID)
+
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, tr)
+}
