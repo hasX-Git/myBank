@@ -11,4 +11,4 @@ RUN go build -o bank ./main
 
 EXPOSE 2266
 
-ENTRYPOINT ["./bank"]
+CMD ["./bank"]
