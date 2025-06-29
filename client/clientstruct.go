@@ -1,26 +1,21 @@
 package client
 
-import "gorm.io/gorm"
-
 type Transaction struct {
-	gorm.Model
-	AID  string `gorm:"unique;column:AID"`
-	Sum  uint32 `gorm:"column:Amount"`
-	TrID string `gorm:"unique;column:TID"`
+	AID  string `gorm:"column:aid"`
+	Sum  uint32 `gorm:"column:amount"`
+	TrID string `gorm:"primaryKey;column:tid"`
 }
 
 type ClientInfo struct {
-	gorm.Model
-	AID    string `gorm:"unique;column:AID"`
-	Firstn string `gorm:"column:First_Name"`
-	Lastn  string `gorm:"column:Last_Name"`
-	NID    string `gorm:"unique;column:NID"`
+	AID    string `gorm:"unique;column:aid"`
+	Firstn string `gorm:"column:first_name"`
+	Lastn  string `gorm:"column:last_name"`
+	NID    string `gorm:"primaryKey;column:nid"`
 }
 
 type Account struct {
-	gorm.Model
-	Balance    uint32        `gorm:"column:Balance"`
-	AID        string        `gorm:"unique;column:AID"`
-	Trs        []Transaction `gorm:"foreignKey:AID;column:Transactions"`
-	PersonInfo ClientInfo    `gorm:"foreignKey:AID;column:Personal_Info"`
+	Balance    uint32        `gorm:"column:balance"`
+	AID        string        `gorm:"primaryKey;column:aid"`
+	Trs        []Transaction `gorm:"foreignKey:AID"`
+	PersonInfo ClientInfo    `gorm:"foreignKey:AID;references:aid"`
 }

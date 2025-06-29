@@ -24,9 +24,9 @@ func POSTcreateAccount(c *gin.Context) {
 		return
 	}
 
-	err := DB.First(&ClientInfo{}, "NID = ?", newAccountRequest.NID)
+	result := DB.First(&ClientInfo{}, "NID = ?", newAccountRequest.NID)
 
-	if err.Error == nil {
+	if result.Error == nil {
 		c.IndentedJSON(http.StatusConflict, gin.H{"message": "Client already in database"})
 		return
 	}
@@ -44,22 +44,24 @@ func POSTcreateAccount(c *gin.Context) {
 	var aid string
 	for {
 		aid = "AID" + currentDateAsID(5)
-		err = DB.First(&Account{}, "AID = ?", aid)
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+		result = DB.First(&Account{}, "AID = ?", aid)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			break
 		}
 	}
 	newAccount.AID = aid
 	newClient.AID = aid
 
-	err = DB.Create(&newAccount)
-	if err.Error != nil {
-		c.IndentedJSON(http.StatusNotImplemented, "updating account db failed")
+	result = DB.Create(&newClient)
+	if result.Error != nil {
+		log.Println("Error:", result)
+		c.IndentedJSON(http.StatusNotImplemented, "updating client db failed")
 		return
 	}
-	err = DB.Create(&newClient)
-	if err.Error != nil {
-		c.IndentedJSON(http.StatusNotImplemented, "updating client db failed")
+	result = DB.Create(&newAccount)
+	if result.Error != nil {
+		log.Println("Error:", result)
+		c.IndentedJSON(http.StatusNotImplemented, "updating account db failed")
 		return
 	}
 
@@ -75,23 +77,23 @@ func POSTcreateTransaction(c *gin.Context) {
 		return
 	}
 
-	err := DB.First(&Account{}, "AID = ?", newTransactionRequest.AID)
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	result := DB.First(&Account{}, "AID = ?", newTransactionRequest.AID)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
-			log.Fatal("Error:", err)
+			log.Println("Error:", result)
 		} else {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when searching AID"})
-			log.Fatal("Error:", err)
+			log.Println("Error:", result)
 		}
 		return
 	}
 	//checking if enough balance on account
 	var balance uint32
-	err = DB.Model(&Account{}).Select("balance").Where("AID = ?", newTransactionRequest.AID).Scan(&balance)
-	if err.Error != nil {
+	result = DB.Model(&Account{}).Select("balance").Where("AID = ?", newTransactionRequest.AID).Scan(&balance)
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when retrieving balance"})
-		log.Fatal("Error:", err)
+		log.Println("Error:", result)
 	}
 
 	if newTransactionRequest.Sum > balance {
@@ -108,10 +110,10 @@ func POSTcreateTransaction(c *gin.Context) {
 
 	newBalance := balance - newTransactionRequest.Sum
 
-	err = DB.Model(&Account{}).Where("AID = ?", newTransactionRequest.AID).Update("balance", newBalance)
-	if err.Error != nil {
+	result = DB.Model(&Account{}).Where("AID = ?", newTransactionRequest.AID).Update("balance", newBalance)
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when updating Balance"})
-		log.Fatal("Error:", err.Error)
+		log.Println("Error:", result.Error)
 		return
 	}
 
@@ -123,14 +125,14 @@ func GETaccountInfoByAID(c *gin.Context) {
 	AID := c.Param("account")
 	var acc Account
 
-	err := DB.First(&acc, "AID = ?", AID)
+	result := DB.Preload("PersonInfo").Preload("Trs").First(&acc, "AID = ?", AID)
 
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
 		} else {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
-			log.Fatal("Error:", err.Error)
+			log.Println("Error:", result.Error)
 		}
 		return
 	}
@@ -142,14 +144,14 @@ func GETtransactionInfoByTID(c *gin.Context) {
 	TID := c.Param("transaction")
 	var tr Transaction
 
-	err := DB.First(&tr, "TID = ?", TID)
+	result := DB.First(&tr, "TID = ?", TID)
 
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
 		} else {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
-			log.Fatal("Error:", err.Error)
+			log.Println("Error:", result.Error)
 		}
 		return
 	}
@@ -161,14 +163,14 @@ func GETclientInfoByNID(c *gin.Context) {
 	NID := c.Param("id")
 	var cl ClientInfo
 
-	err := DB.First(&cl, "NID = ?", NID)
+	result := DB.First(&cl, "NID = ?", NID)
 
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Client not found"})
 		} else {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
-			log.Fatal("Error:", err.Error)
+			log.Println("Error:", result.Error)
 		}
 		return
 	}
@@ -179,11 +181,11 @@ func GETclientInfoByNID(c *gin.Context) {
 func GETaccountsList(c *gin.Context) {
 	var accounts []Account
 
-	err := DB.Find(&accounts)
+	result := DB.Preload("PersonInfo").Preload("Trs").Find(&accounts)
 
-	if err.Error != nil {
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
-		log.Fatal("Error:", err)
+		log.Println("Error:", result)
 		return
 	}
 
@@ -193,11 +195,11 @@ func GETaccountsList(c *gin.Context) {
 func GETclientsList(c *gin.Context) {
 	var clients []ClientInfo
 
-	err := DB.Find(&clients)
+	result := DB.Find(&clients)
 
-	if err.Error != nil {
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
-		log.Fatal("Error:", err)
+		log.Println("Error:", result)
 		return
 	}
 
@@ -207,11 +209,11 @@ func GETclientsList(c *gin.Context) {
 func GETtransactionsList(c *gin.Context) {
 	var transactions []Transaction
 
-	err := DB.Find(&transactions)
+	result := DB.Find(&transactions)
 
-	if err.Error != nil {
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
-		log.Fatal("Error:", err)
+		log.Println("Error:", result)
 		return
 	}
 
@@ -228,30 +230,30 @@ func PATCHdepositMoney(c *gin.Context) {
 		return
 	}
 
-	err := DB.First(&Account{}, "AID = ?", newDepositRequest.AID)
-	if err.Error != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+	result := DB.First(&Account{}, "AID = ?", newDepositRequest.AID)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
-			log.Fatal("Error:", err)
+			log.Println("Error:", result)
 		} else {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when searching AID"})
-			log.Fatal("Error:", err)
+			log.Println("Error:", result)
 		}
 		return
 	}
 
 	var balance uint32
-	err = DB.Model(&Account{}).Select("balance").Where("AID = ?", newDepositRequest.AID).Scan(&balance)
-	if err.Error != nil {
+	result = DB.Model(&Account{}).Select("balance").Where("AID = ?", newDepositRequest.AID).Scan(&balance)
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when retrieving balance"})
-		log.Fatal("Error:", err)
+		log.Println("Error:", result)
 	}
 
 	newBalance := balance + newDepositRequest.Sum
-	err = DB.Model(&Account{}).Where("AID = ?", newDepositRequest.AID).Update("balance", newBalance)
-	if err.Error != nil {
+	result = DB.Model(&Account{}).Where("AID = ?", newDepositRequest.AID).Update("balance", newBalance)
+	if result.Error != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when updating Balance"})
-		log.Fatal("Error:", err.Error)
+		log.Fatal("Error:", result.Error)
 		return
 	}
 
@@ -261,8 +263,8 @@ func PATCHdepositMoney(c *gin.Context) {
 	})
 }
 
-func PATCHdeleteAll(c *gin.Context) {
-	DB.Where("1 = 1").Delete(&Transaction{})
-	DB.Where("1 = 1").Delete(&ClientInfo{})
-	DB.Where("1 = 1").Delete(&Account{})
+func PATCHhardDeleteAll(c *gin.Context) {
+	DB.Unscoped().Where("1 = 1").Delete(&Transaction{})
+	DB.Unscoped().Where("1 = 1").Delete(&ClientInfo{})
+	DB.Unscoped().Where("1 = 1").Delete(&Account{})
 }

@@ -27,7 +27,7 @@ func main() {
 	router.GET("/bank/list/transactions/", client.GETtransactionsList)
 
 	router.PATCH("/bank/account/deposit", client.PATCHdepositMoney)
-	router.PATCH("/bank/deleteAll/", client.PATCHdeleteAll)
+	router.PATCH("/bank/deleteAll/", client.PATCHhardDeleteAll)
 
 	router.Run(":2266")
 }
