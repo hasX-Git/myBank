@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -12,6 +13,8 @@ import (
 var DB *gorm.DB
 
 func ConnectToDB() {
+
+	var err error
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		os.Getenv("POSTGRES_HOST"),
@@ -22,7 +25,16 @@ func ConnectToDB() {
 		os.Getenv("POSTGRES_SSLMODE"),
 	)
 
-	DB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	for i := 0; i < 10; i++ {
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
+		if err == nil {
+			log.Println("Connected")
+			break
+		}
+		log.Println("Reconnecting...")
+		time.Sleep(2 * time.Second)
+	}
 
 	if err != nil {
 		log.Fatal("Conneciton to database failed")

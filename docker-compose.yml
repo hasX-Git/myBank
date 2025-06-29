@@ -1,14 +1,4 @@
 services:
-  app:
-    container_name: app
-    build: .
-    depends_on:
-      - db
-    env_file:
-      - .env
-    networks:
-      - postgres-networks
-
   db:
     image: 'postgres:latest'
     container_name: bank_cont
@@ -20,6 +10,18 @@ services:
       - postgres-networks
     volumes:
       - ${PWD}/db-data/:/var/lib/postgresql/data/
+      
+  app:
+    container_name: app
+    ports:
+      - 2266:2266
+    build: .
+    depends_on:
+      - db
+    env_file:
+      - .env
+    networks:
+      - postgres-networks
 
 networks:
   postgres-networks:

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"math/rand"
 	"strconv"
 	"time"
@@ -36,22 +35,6 @@ func checkValidityOfID(id string, n int) bool {
 		}
 	}
 	return true
-}
-
-func findAccByAID(aid string) (*Account, error) {
-	if _, isPresent := accounts[aid]; !isPresent {
-		return nil, errors.New("account doesn't exist")
-	}
-
-	return accounts[aid], nil
-}
-
-func findTrByTID(tid string) (*Transaction, error) {
-	if _, isPresent := transactions[tid]; !isPresent {
-		return nil, errors.New("transaction doesn't exist")
-	}
-
-	return transactions[tid], nil
 }
 
 type createAccountRequest struct {

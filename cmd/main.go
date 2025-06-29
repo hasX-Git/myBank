@@ -10,19 +10,24 @@ import (
 
 func main() {
 	client.ConnectToDB()
-
 	router := gin.Default()
-	router.POST("bank/account", client.CreateAccount)
-	router.POST("bank/account/transaction", client.CreateTransaction)
-	router.PATCH("bank/account/balance", client.DepositMoney)
-	router.GET("bank/:account", client.GetAccountInfoByAID)
-	router.GET("bank/account/:transaction", client.GetTransactionInfoByTID)
-	router.GET("bank/lists/accounts", client.GetAccountsList)
-	router.GET("bank/lists/clients", client.GetClientsList)
-	router.GET("bank/lists/transactions", client.GetTransacitonsList)
 
-	router.GET("/bank/db/:account", client.DBGetAccountInfoByAID)
-	router.GET("/bank/db/:transaction", client.DBGetTransactionInfoByTID)
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "up"})
+	})
 
-	router.Run("localhost:2266")
+	router.POST("/bank/account/create/", client.POSTcreateAccount)
+	router.POST("/bank/account/pay/", client.POSTcreateTransaction)
+
+	router.GET("/bank/find/account/:account/", client.GETaccountInfoByAID)
+	router.GET("/bank/find/transaction/:transaction/", client.GETtransactionInfoByTID)
+	router.GET("/bank/find/client/:id/", client.GETclientInfoByNID)
+	router.GET("/bank/list/accounts/", client.GETaccountsList)
+	router.GET("/bank/list/clients/", client.GETclientsList)
+	router.GET("/bank/list/transactions/", client.GETtransactionsList)
+
+	router.PATCH("/bank/account/deposit", client.PATCHdepositMoney)
+	router.PATCH("/bank/deleteAll/", client.PATCHdeleteAll)
+
+	router.Run(":2266")
 }

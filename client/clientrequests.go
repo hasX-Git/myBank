@@ -1,12 +1,16 @@
 package client
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func CreateAccount(c *gin.Context) {
+// POST
+func POSTcreateAccount(c *gin.Context) {
 	//initializing new client
 	var newAccountRequest createAccountRequest
 	if err := c.BindJSON(&newAccountRequest); err != nil {
@@ -20,10 +24,10 @@ func CreateAccount(c *gin.Context) {
 		return
 	}
 
-	//checking if the client already exists
-	_, isPresent := clients[newAccountRequest.NID]
-	if isPresent {
-		c.IndentedJSON(http.StatusConflict, gin.H{"message ": "The account with such National ID already exists"})
+	err := DB.First(&ClientInfo{}, "NID = ?", newAccountRequest.NID)
+
+	if err.Error == nil {
+		c.IndentedJSON(http.StatusConflict, gin.H{"message": "Client already in database"})
 		return
 	}
 
@@ -34,44 +38,63 @@ func CreateAccount(c *gin.Context) {
 	newClient.NID = newAccountRequest.NID
 
 	var newAccount Account
-	newAccount.Personinfo = newClient
+	newAccount.PersonInfo = newClient
 
 	//generating unique Account ID(AID)
 	var aid string
 	for {
 		aid = "AID" + currentDateAsID(5)
-		if _, isIn := accounts[aid]; !isIn {
+		err = DB.First(&Account{}, "AID = ?", aid)
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
 			break
 		}
 	}
 	newAccount.AID = aid
 	newClient.AID = aid
 
-	DB.Create(&newAccount)
-	DB.Create(&newClient)
-	clients[newClient.NID] = &newClient
-	accounts[newAccount.AID] = &newAccount
+	err = DB.Create(&newAccount)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusNotImplemented, "updating account db failed")
+		return
+	}
+	err = DB.Create(&newClient)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusNotImplemented, "updating client db failed")
+		return
+	}
 
 	//
 	c.IndentedJSON(http.StatusCreated, newAccount)
 }
 
-func CreateTransaction(c *gin.Context) {
+func POSTcreateTransaction(c *gin.Context) {
 	var newTransactionRequest createTransactionRequest
 
-	if err := c.BindJSON(&newTransactionRequest); err != nil {
+	if Err := c.BindJSON(&newTransactionRequest); Err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Improper formatting"})
 		return
 	}
 
-	_, isPresent := accounts[newTransactionRequest.AID]
-	if !isPresent {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
+	err := DB.First(&Account{}, "AID = ?", newTransactionRequest.AID)
+	if err.Error != nil {
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
+			log.Fatal("Error:", err)
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when searching AID"})
+			log.Fatal("Error:", err)
+		}
 		return
 	}
-
 	//checking if enough balance on account
-	if newTransactionRequest.Sum > accounts[newTransactionRequest.AID].Balance {
+	var balance uint32
+	err = DB.Model(&Account{}).Select("balance").Where("AID = ?", newTransactionRequest.AID).Scan(&balance)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when retrieving balance"})
+		log.Fatal("Error:", err)
+	}
+
+	if newTransactionRequest.Sum > balance {
 		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "not enough balance"})
 		return
 	}
@@ -82,42 +105,122 @@ func CreateTransaction(c *gin.Context) {
 	newtr.TrID = "TID" + currentDateAsID(5)
 
 	DB.Create(&newtr)
-	transactions[newtr.TrID] = &newtr
 
-	newBalance := accounts[newTransactionRequest.AID].Balance - newtr.Sum
-	accounts[newTransactionRequest.AID].Balance = newBalance
-	DB.Model(&Account{}).Where("id = ?", newtr.AID).Update("Balance", newBalance)
+	newBalance := balance - newTransactionRequest.Sum
 
-	accounts[newTransactionRequest.AID].Trs = append(accounts[newTransactionRequest.AID].Trs, newtr)
+	err = DB.Model(&Account{}).Where("AID = ?", newTransactionRequest.AID).Update("balance", newBalance)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when updating Balance"})
+		log.Fatal("Error:", err.Error)
+		return
+	}
 
 	c.IndentedJSON(http.StatusCreated, newtr)
 }
 
-func GetAccountInfoByAID(c *gin.Context) {
+// GET
+func GETaccountInfoByAID(c *gin.Context) {
 	AID := c.Param("account")
-	Account, err := findAccByAID(AID)
+	var acc Account
 
-	if err != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
+	err := DB.First(&acc, "AID = ?", AID)
+
+	if err.Error != nil {
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
+			log.Fatal("Error:", err.Error)
+		}
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, Account)
+	c.IndentedJSON(http.StatusOK, acc)
 }
 
-func GetTransactionInfoByTID(c *gin.Context) {
+func GETtransactionInfoByTID(c *gin.Context) {
 	TID := c.Param("transaction")
-	Transaction, err := findTrByTID(TID)
+	var tr Transaction
 
-	if err != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
+	err := DB.First(&tr, "TID = ?", TID)
+
+	if err.Error != nil {
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
+			log.Fatal("Error:", err.Error)
+		}
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, Transaction)
+	c.IndentedJSON(http.StatusOK, tr)
 }
 
-func DepositMoney(c *gin.Context) {
+func GETclientInfoByNID(c *gin.Context) {
+	NID := c.Param("id")
+	var cl ClientInfo
+
+	err := DB.First(&cl, "NID = ?", NID)
+
+	if err.Error != nil {
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Client not found"})
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
+			log.Fatal("Error:", err.Error)
+		}
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, cl)
+}
+
+func GETaccountsList(c *gin.Context) {
+	var accounts []Account
+
+	err := DB.Find(&accounts)
+
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
+		log.Fatal("Error:", err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, accounts)
+}
+
+func GETclientsList(c *gin.Context) {
+	var clients []ClientInfo
+
+	err := DB.Find(&clients)
+
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
+		log.Fatal("Error:", err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, clients)
+}
+
+func GETtransactionsList(c *gin.Context) {
+	var transactions []Transaction
+
+	err := DB.Find(&transactions)
+
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
+		log.Fatal("Error:", err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, transactions)
+}
+
+//PATCH
+
+func PATCHdepositMoney(c *gin.Context) {
 	var newDepositRequest depositRequest
 
 	if err := c.BindJSON(&newDepositRequest); err != nil {
@@ -125,55 +228,41 @@ func DepositMoney(c *gin.Context) {
 		return
 	}
 
-	if _, isIn := accounts[newDepositRequest.AID]; !isIn {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account doesn't exist"})
+	err := DB.First(&Account{}, "AID = ?", newDepositRequest.AID)
+	if err.Error != nil {
+		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "The account with such AID doesn't exist"})
+			log.Fatal("Error:", err)
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when searching AID"})
+			log.Fatal("Error:", err)
+		}
 		return
 	}
 
-	newBalance := accounts[newDepositRequest.AID].Balance + newDepositRequest.Sum
-	accounts[newDepositRequest.AID].Balance = newBalance
-	DB.Model(&Account{}).Where("id = ?", newDepositRequest.AID).Update("Balance", newBalance)
+	var balance uint32
+	err = DB.Model(&Account{}).Select("balance").Where("AID = ?", newDepositRequest.AID).Scan(&balance)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when retrieving balance"})
+		log.Fatal("Error:", err)
+	}
+
+	newBalance := balance + newDepositRequest.Sum
+	err = DB.Model(&Account{}).Where("AID = ?", newDepositRequest.AID).Update("balance", newBalance)
+	if err.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when updating Balance"})
+		log.Fatal("Error:", err.Error)
+		return
+	}
 
 	c.IndentedJSON(http.StatusOK, gin.H{
 		"Deposited": newDepositRequest.Sum,
-		"Balance":   accounts[newDepositRequest.AID].Balance,
+		"Balance":   newBalance,
 	})
 }
 
-func GetAccountsList(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, accounts)
-}
-
-func GetClientsList(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, clients)
-}
-
-func GetTransacitonsList(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, transactions)
-}
-
-func DBGetAccountInfoByAID(c *gin.Context) {
-	var acc Account
-	AID := c.Param("account")
-	result := DB.First(&acc, AID)
-
-	if result.Error != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Account not found"})
-		return
-	}
-
-	c.IndentedJSON(http.StatusOK, acc)
-}
-
-func DBGetTransactionInfoByTID(c *gin.Context) {
-	var tr Transaction
-	TID := c.Param("transaction")
-	result := DB.First(&tr, TID)
-
-	if result.Error != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Transaction not found"})
-		return
-	}
-
-	c.IndentedJSON(http.StatusOK, tr)
+func PATCHdeleteAll(c *gin.Context) {
+	DB.Where("1 = 1").Delete(&Transaction{})
+	DB.Where("1 = 1").Delete(&ClientInfo{})
+	DB.Where("1 = 1").Delete(&Account{})
 }

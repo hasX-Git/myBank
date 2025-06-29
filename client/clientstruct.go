@@ -1,25 +1,26 @@
 package client
 
+import "gorm.io/gorm"
+
 type Transaction struct {
-	AID  string
-	Sum  uint32
-	TrID string `gorm:"primaryKey"`
+	gorm.Model
+	AID  string `gorm:"unique;column:AID"`
+	Sum  uint32 `gorm:"column:Amount"`
+	TrID string `gorm:"unique;column:TID"`
 }
 
 type ClientInfo struct {
-	AID    string `gorm:"unique"`
-	Firstn string
-	Lastn  string
-	NID    string `gorm:"primaryKey"`
+	gorm.Model
+	AID    string `gorm:"unique;column:AID"`
+	Firstn string `gorm:"column:First_Name"`
+	Lastn  string `gorm:"column:Last_Name"`
+	NID    string `gorm:"unique;column:NID"`
 }
 
 type Account struct {
-	Balance    uint32
-	AID        string        `gorm:"primaryKey"`
-	Trs        []Transaction `gorm:"foreignKey:AID"`
-	Personinfo ClientInfo    `gorm:"foreignKey:AID"`
+	gorm.Model
+	Balance    uint32        `gorm:"column:Balance"`
+	AID        string        `gorm:"unique;column:AID"`
+	Trs        []Transaction `gorm:"foreignKey:AID;column:Transactions"`
+	PersonInfo ClientInfo    `gorm:"foreignKey:AID;column:Personal_Info"`
 }
-
-var transactions = make(map[string]*Transaction)
-var accounts = make(map[string]*Account)
-var clients = make(map[string]*ClientInfo)
