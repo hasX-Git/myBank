@@ -17,4 +17,11 @@ func main() {
 	router.GET("bank/lists/clients", client.GetClientsList)
 	router.GET("bank/lists/transactions", client.GetTransacitonsList)
 	router.Run("localhost:2266")
+
+	router.GET("/download/:filename", func(c *gin.Context) {
+		filename := c.Param("filename")
+		filepath := "./uploads/" + filename
+
+		c.FileAttachment(filepath, filename)
+	})
 }
