@@ -18,6 +18,7 @@ func main() {
 
 	router.POST("/bank/account/create/", client.POSTcreateAccount)
 	router.POST("/bank/account/pay/", client.POSTcreateTransaction)
+	router.POST("/bank/upload", client.POSTfile)
 
 	router.GET("/bank/find/account/:account/", client.GETaccountInfoByAID)
 	router.GET("/bank/find/transaction/:transaction/", client.GETtransactionInfoByTID)
@@ -25,6 +26,7 @@ func main() {
 	router.GET("/bank/list/accounts/", client.GETaccountsList)
 	router.GET("/bank/list/clients/", client.GETclientsList)
 	router.GET("/bank/list/transactions/", client.GETtransactionsList)
+	router.GET("/bank/download", client.GETexcelFile)
 
 	router.PATCH("/bank/account/deposit", client.PATCHdepositMoney)
 	router.PATCH("/bank/deleteAll/", client.PATCHhardDeleteAll)

@@ -1,11 +1,14 @@
 package client
 
 import (
+	"bytes"
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -120,6 +123,23 @@ func POSTcreateTransaction(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, newtr)
 }
 
+func POSTfile(c *gin.Context) {
+	f, err := c.FormFile("file")
+
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "uploading failed"})
+		return
+	}
+
+	// Upload the file to specific dst.
+	if err = c.SaveUploadedFile(f, "./files/"+f.Filename); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "saving on machine failed"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Success"})
+}
+
 // GET
 func GETaccountInfoByAID(c *gin.Context) {
 	AID := c.Param("account")
@@ -218,6 +238,80 @@ func GETtransactionsList(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, transactions)
+}
+
+func GETexcelFile(c *gin.Context) {
+	f := excelize.NewFile()
+
+	p1, err := f.NewSheet("BankUsers")
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to create file"})
+		return
+	}
+
+	headers1 := []string{"Name", "Surname", "NationalID", "AccountID", "Balance"}
+	for i1, header1 := range headers1 {
+		col := string(rune('A' + i1))
+		f.SetCellValue("BankUsers", col+"1", header1)
+	}
+
+	var accounts []Account
+	result := DB.Preload("PersonInfo").Find(&accounts)
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
+		return
+	}
+
+	for i1, account := range accounts {
+		row := strconv.Itoa(i1 + 2)
+		f.SetCellValue("BankUsers", "A"+row, account.PersonInfo.Firstn)
+		f.SetCellValue("BankUsers", "B"+row, account.PersonInfo.Lastn)
+		f.SetCellValue("BankUsers", "C"+row, account.PersonInfo.NID)
+		f.SetCellValue("BankUsers", "D"+row, account.AID)
+		f.SetCellInt("BankUsers", "E"+row, int64(account.Balance))
+	}
+
+	f.SetActiveSheet(p1)
+
+	/////////////////////////////////////////////////////
+	_, err = f.NewSheet("Transactions")
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Failed to create file"})
+		return
+	}
+
+	headers2 := []string{"AccountID", "Sum", "TransactionID"}
+	for i2, header2 := range headers2 {
+		col := string(rune('A' + i2))
+		f.SetCellValue("Transactions", col+"1", header2)
+	}
+
+	var transactions []Transaction
+	result = DB.Find(&transactions)
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured when getting list"})
+		return
+	}
+
+	for i2, transaction := range transactions {
+		row := strconv.Itoa(i2 + 2)
+		f.SetCellValue("Transactions", "A"+row, transaction.AID)
+		f.SetCellValue("Transactions", "B"+row, transaction.Sum)
+		f.SetCellValue("Transactions", "C"+row, transaction.TrID)
+	}
+
+	f.DeleteSheet("Sheet1")
+
+	var buf bytes.Buffer
+
+	if err := f.Write(&buf); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "failed"})
+		return
+	}
+
+	c.Header("Content-Disposition", "attachment; filename=report.xlsx")
+	c.DataFromReader(http.StatusOK, int64(buf.Len()), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", &buf, nil)
+
 }
 
 //PATCH
