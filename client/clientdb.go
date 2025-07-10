@@ -40,7 +40,7 @@ func ConnectToDB() {
 		log.Fatal("Conneciton to database failed")
 	}
 
-	if err = DB.AutoMigrate(&Account{}, &ClientInfo{}, &Transaction{}); err != nil {
+	if err = DB.AutoMigrate(&Account{}, &ClientInfo{}, &Transaction{}, &File{}); err != nil {
 		log.Fatal("migration failed")
 	}
 

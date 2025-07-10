@@ -1,6 +1,8 @@
 package client
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"math/rand"
 	"strconv"
 	"time"
@@ -35,6 +37,11 @@ func checkValidityOfID(id string, n int) bool {
 		}
 	}
 	return true
+}
+
+func hash(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
 }
 
 type createAccountRequest struct {

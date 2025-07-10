@@ -19,3 +19,8 @@ type Account struct {
 	Trs        []Transaction `gorm:"foreignKey:AID"`
 	PersonInfo ClientInfo    `gorm:"foreignKey:AID;references:aid"`
 }
+
+type File struct {
+	Filename string `gorm:"column:filename"`
+	Hash     string `gorm:"column:hash;unique"`
+}

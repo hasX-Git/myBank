@@ -27,6 +27,7 @@ func main() {
 	router.GET("/bank/list/clients/", client.GETclientsList)
 	router.GET("/bank/list/transactions/", client.GETtransactionsList)
 	router.GET("/bank/download", client.GETexcelFile)
+	router.GET("/bank/download/:file", client.GETfile)
 
 	router.PATCH("/bank/account/deposit", client.PATCHdepositMoney)
 	router.PATCH("/bank/deleteAll/", client.PATCHhardDeleteAll)

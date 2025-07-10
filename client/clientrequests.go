@@ -131,13 +131,23 @@ func POSTfile(c *gin.Context) {
 		return
 	}
 
-	// Upload the file to specific dst.
+	var newFile File
+	newFile.Filename = f.Filename
+	newFile.Hash = hash(f.Filename)
+
+	result := DB.Create(&newFile)
+	if result.Error != nil {
+		log.Println("Error:", result)
+		c.IndentedJSON(http.StatusNotImplemented, "updating file db failed")
+		return
+	}
+
 	if err = c.SaveUploadedFile(f, "./files/"+f.Filename); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "saving on machine failed"})
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Success"})
+	c.IndentedJSON(http.StatusOK, newFile)
 }
 
 // GET
@@ -312,6 +322,27 @@ func GETexcelFile(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=report.xlsx")
 	c.DataFromReader(http.StatusOK, int64(buf.Len()), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", &buf, nil)
 
+}
+
+func GETfile(c *gin.Context) {
+	hash := c.Param("file")
+	var file File
+
+	result := DB.First(&file, "hash = ?", hash)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "File not found"})
+		} else {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error occured"})
+			log.Println("Error:", result.Error)
+		}
+		return
+	}
+
+	filepath := "./files/" + file.Filename
+
+	c.FileAttachment(filepath, file.Filename)
 }
 
 //PATCH
