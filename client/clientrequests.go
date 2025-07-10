@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -392,4 +393,6 @@ func PATCHhardDeleteAll(c *gin.Context) {
 	DB.Unscoped().Where("1 = 1").Delete(&Transaction{})
 	DB.Unscoped().Where("1 = 1").Delete(&ClientInfo{})
 	DB.Unscoped().Where("1 = 1").Delete(&Account{})
+	DB.Unscoped().Where("1 = 1").Delete(&File{})
+	os.RemoveAll("./files")
 }
