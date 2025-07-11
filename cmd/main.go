@@ -2,8 +2,7 @@ package main
 
 import (
 	"MyBankProject/client"
-
-	_ "github.com/lib/pq"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +12,7 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "up"})
+		c.IndentedJSON(200, gin.H{"message": "up"})
 	})
 
 	router.POST("/bank/account/create/", client.POSTcreateAccount)
@@ -32,5 +31,6 @@ func main() {
 	router.PATCH("/bank/account/deposit", client.PATCHdepositMoney)
 	router.PATCH("/bank/deleteAll/", client.PATCHhardDeleteAll)
 
-	router.Run(":2266")
+	port := ":" + os.Getenv("APP_PORT")
+	router.Run(port) //AP
 }

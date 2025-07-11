@@ -1,1 +1,5 @@
 README.md
+.env.example
+Dockerfile.Example
+docker-compose_example.yml
+.gitignore

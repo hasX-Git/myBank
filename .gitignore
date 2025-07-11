@@ -1,2 +1,7 @@
-db-data/
-files/
+db-data/*
+files/*
+!db-data/.gitkeep
+!files/.gitkeep
+.env
+Dockerfile
+docker-compose.yml
