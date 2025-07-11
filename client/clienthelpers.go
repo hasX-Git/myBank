@@ -1,7 +1,8 @@
 package client
 
 import (
-	"errors"
+	"crypto/sha256"
+	"encoding/hex"
 	"math/rand"
 	"strconv"
 	"time"
@@ -38,20 +39,9 @@ func checkValidityOfID(id string, n int) bool {
 	return true
 }
 
-func findAccByAID(aid string) (*account, error) {
-	if _, isPresent := accounts[aid]; !isPresent {
-		return nil, errors.New("account doesn't exist")
-	}
-
-	return accounts[aid], nil
-}
-
-func findTrByTID(tid string) (*transaction, error) {
-	if _, isPresent := transactions[tid]; !isPresent {
-		return nil, errors.New("transaction doesn't exist")
-	}
-
-	return transactions[tid], nil
+func hash(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
 }
 
 type createAccountRequest struct {
@@ -61,11 +51,11 @@ type createAccountRequest struct {
 }
 
 type createTransactionRequest struct {
-	Aid string `json:"add_tr_aid"`
+	AID string `json:"add_tr_aid"`
 	Sum uint32 `json:"add_tr_sum"`
 }
 
 type depositRequest struct {
+	AID string `json:"dep_aid"`
 	Sum uint32 `json:"dep_sum"`
-	Aid string `json:"dep_aid"`
 }

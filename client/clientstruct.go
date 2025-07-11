@@ -1,23 +1,26 @@
 package client
 
-type transaction struct {
-	Sum  uint32
-	TrID string
+type Transaction struct {
+	AID  string `gorm:"column:aid"`
+	Sum  uint32 `gorm:"column:amount"`
+	TrID string `gorm:"primaryKey;column:tid"`
 }
 
-type clientInfo struct {
-	Firstn string
-	Lastn  string
-	NID    string
+type ClientInfo struct {
+	AID    string `gorm:"unique;column:aid"`
+	Firstn string `gorm:"column:first_name"`
+	Lastn  string `gorm:"column:last_name"`
+	NID    string `gorm:"primaryKey;column:nid"`
 }
 
-type account struct {
-	Balance    uint32
-	AID        string
-	Trs        map[string]*transaction
-	Personinfo clientInfo
+type Account struct {
+	Balance    uint32        `gorm:"column:balance"`
+	AID        string        `gorm:"primaryKey;column:aid"`
+	Trs        []Transaction `gorm:"foreignKey:AID"`
+	PersonInfo ClientInfo    `gorm:"foreignKey:AID;references:aid"`
 }
 
-var transactions = make(map[string]*transaction)
-var accounts = make(map[string]*account)
-var clients = make(map[string]*clientInfo)
+type File struct {
+	Filename string `gorm:"column:filename"`
+	Hash     string `gorm:"column:hash;unique"`
+}

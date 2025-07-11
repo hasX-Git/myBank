@@ -1,0 +1,30 @@
+services:
+  db:
+    image: 'postgres:latest'
+    container_name: bank_cont
+    ports:
+      - 5432:5432 #DP
+    env_file:
+      - .env
+    networks:
+      - postgres-networks
+    volumes:
+      - ${PWD}/db-data/:/var/lib/postgresql/data/
+      
+  app:
+    container_name: app
+    ports:
+      - 2266:2266 #AP
+    build: .
+    depends_on:
+      - db
+    env_file:
+      - .env
+    networks:
+      - postgres-networks
+    volumes:
+      - ./files:/bankAPI/files
+
+networks:
+  postgres-networks:
+    driver: bridge
