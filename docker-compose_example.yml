@@ -1,7 +1,7 @@
 services:
   db:
     image: 'postgres:latest'
-    container_name: bank_cont
+    container_name: bank_cont #change
     ports:
       - 5432:5432 #DP
     env_file:
@@ -12,7 +12,7 @@ services:
       - ${PWD}/db-data/:/var/lib/postgresql/data/
       
   app:
-    container_name: app
+    container_name: app #change
     ports:
       - 2266:2266 #AP
     build: .
